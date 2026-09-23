@@ -1,0 +1,11 @@
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.log
+.DS_Store
+Thumbs.db
+
+# Exclude backend .env (contains API keys). Use .env.example as template.
+terravigil-database/backend/.env

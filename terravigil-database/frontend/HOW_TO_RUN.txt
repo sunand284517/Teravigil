@@ -1,0 +1,1 @@
+Use the application root START_HERE.md. Run npm run setup, configure backend/.env, then npm start. Open http://localhost:3000. Do not use a standalone demo to test integrated model/RAG/reports.

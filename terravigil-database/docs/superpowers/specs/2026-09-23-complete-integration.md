@@ -1,0 +1,15 @@
+# TerraVigil Application Integration
+
+The user has authorized completing the four verified missing integrations and returning an updated ZIP. Preserve the React interface and existing API shape. The ZIP must include the supplied best.pt and a prebuilt frontend, installation commands for Windows and Linux/macOS, and honest dependency diagnostics.
+
+Default npm start will launch the integrated Node backend and frontend on one origin. A local persistent database is the default so MongoDB is not required for testing. MongoDB remains an optional backend. The sample is seeded once into that database and remains explicitly synthetic; it now participates in real indexing, retrieval and reports. An explicitly named legacy offline preview may retain deterministic summaries, but cannot be the default launcher.
+
+RAG uses the existing MiniLM embedding, mission-scoped index and Gemini generation services. Queries must automatically prepare/refresh their mission's index, include retrieved source records and never fall back to keyword-generated answers. Missing key, model download, quota or network failures must be visible. The SRS-derived reference text can be included as labeled project requirements, never represented as external clearance doctrine. Backend .env holds credentials. No credentials ship in the ZIP.
+
+Model inference loads the exact user-supplied best.pt using Ultralytics on CPU by default, with an optional device setting. Images uploaded through a new model page or API produce actual predictions and annotated output. Inference is isolated in Python and invoked by Node using argument arrays, no shell. Uploaded images are bounded/validated, output names are generated, and path traversal is rejected. Only land_mines predictions are persisted as unconfirmed observations when coordinates are supplied; no metallic evidence or target location is fabricated. The UI distinguishes inference outputs from sample data. Model readiness/errors are visible. Hardware flight control is outside this supplied codebase and is not invented.
+
+Reports provide immutable numbered editions, SHA256 source/content references, frozen evidence/telemetry, downloadable PDF and CSV, source citations and limitations. Factual reports work without Gemini; optional AI narrative uses real RAG, and generation mode/errors are explicit. The report route never returns ready before files and metadata are durably written.
+
+The map distinguishes Flight start/end from Route A/B, with a clear legend and separate layer behavior. Routing remains advisory recorded-point geometry and does not claim terrain awareness.
+
+Validation includes persistent restart behavior, mission isolation, failed/missing model/provider paths, sample RAG bypass regression, report download bytes/content and versioning, frontend tests/typecheck/build, and real checkpoint inference if runtime installation succeeds. External Gemini output can only be verified with a supplied working key; this limitation must be reported plainly.
