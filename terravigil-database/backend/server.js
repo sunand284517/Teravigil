@@ -12,11 +12,9 @@ const {
     calculateRisk
 } = require("./fusion/risk");
 const cors = require("cors");
-const { createRagService } = require("./rag/service");
-const { createRagRouter } = require("./rag/routes");
 const { createRoutingRouter, routeJsonErrorHandler } = require("./routing/routes");
 const { createSampleRouter } = require("./sample/routes");
-function createMissionApp({ getDB = connectDB, virtualSample = true, ragService: suppliedRagService } = {}) {
+function createMissionApp({ getDB = connectDB, virtualSample = true } = {}) {
 const app = express();
 if (virtualSample) app.use(cors());
 app.use(express.json());
@@ -1300,16 +1298,13 @@ app.get("/missions/:mission_id/summary", async (req, res) => {
 
 });
 
-// Mission RAG is additive: all existing CRUD, fusion, risk, history, statistics,
-// and summary routes above remain unchanged.
-const ragService = suppliedRagService || createRagService({ getDB });
-app.use(createRagRouter(ragService));
+// Mission CRUD, fusion, risk, history, statistics, and summary routes above remain unchanged.
 app.use(createRoutingRouter({ connectDB: getDB }));
 
-return { app, ragService };
+return { app };
 }
 
-const { app, ragService } = createMissionApp();
+const { app } = createMissionApp();
 
 // Preserve direct node server.js launch compatibility with the integrated app.
 if (require.main === module) {
@@ -1318,4 +1313,4 @@ if (require.main === module) {
     }));
 }
 
-module.exports = { app, ragService, createMissionApp };
+module.exports = { app, createMissionApp };

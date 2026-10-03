@@ -13,7 +13,7 @@ import { RoutePlannerPage } from './pages/RoutePlannerPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ModelInferencePage } from './pages/ModelInferencePage';
-import { AssistantPage } from './pages/AssistantPage';
+
 import { SystemPage } from './pages/SystemPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/LoginPage';
@@ -41,7 +41,7 @@ export const AppRouter: React.FC = () => {
           <Route path="/analytics" element={<AnalyticsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/model" element={<ModelInferencePage />} />
-          <Route path="/assistant" element={<AssistantPage />} />
+
           <Route path="/system" element={<SystemPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />

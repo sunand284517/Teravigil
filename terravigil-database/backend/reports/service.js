@@ -3,6 +3,7 @@
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { createPdf } = require('./pdf');
 const { createCsv } = require('./csv');
 const { ReportError, canonicalJson, hash, hashBytes, validateSessionId, loadSnapshot, summarize,
@@ -71,33 +72,12 @@ async function reserveEdition(base, db) {
   }
 }
 
-function mapRagSource(source, snapshot) {
-  const sessionId = source?.mission_id ?? source?.sessionId;
-  if (sessionId !== snapshot.sessionId) throw new ReportError('REPORT_SOURCE_MISMATCH', 409, 'The AI narrative returned a source from outside this mission. No report was created.');
-  const sourceType = source.source_type ?? source.sourceType ?? 'unknown';
-  const sourceRecordId = source.record_id ?? source.sourceRecordId ?? null;
-  const collection = { mission: 'missions', detection: 'detections', observation: 'observations', telemetry: 'telemetry', inference_run: 'inference_runs' }[sourceType];
-  const record = collection ? snapshot[collection].find((row, index) => recordId(row, sourceType, index) === String(sourceRecordId)) : null;
-  if (collection && !record) throw new ReportError('REPORT_SOURCE_MISMATCH', 409, 'An AI citation is absent from the frozen mission sources. No report was created.');
-  return {
-    sessionId,
-    sourceId: source.source_id ?? source.sourceId ?? null,
-    sourceType,
-    sourceRecordId,
-    document: typeof source.document === 'string' ? source.document : `${sourceType} record`,
-    section: typeof source.section === 'string' ? source.section : 'RAG narrative citation',
-    snippet: typeof source.text === 'string' ? source.text : typeof source.snippet === 'string' ? source.snippet : canonicalJson(source.facts || {}),
-    similarity: Number.isFinite(source.score ?? source.similarity) ? (source.score ?? source.similarity) : null,
-    ...(record ? { sha256: hash(record) } : {})
-  };
-}
-
 function publicItem(document) {
   const { _id, ...item } = document;
   return item;
 }
 
-function createReportService({ getDB, ragService, dataDir } = {}) {
+function createReportService({ getDB, dataDir } = {}) {
   if (typeof getDB !== 'function') throw new TypeError('getDB is required');
   if (typeof dataDir !== 'string' || !dataDir) throw new TypeError('dataDir is required');
   const editionsDir = path.resolve(dataDir, 'reports', 'editions');
@@ -121,27 +101,24 @@ function createReportService({ getDB, ragService, dataDir } = {}) {
     let narrativeSources = [];
     if (body.includeAi) {
       try {
-        if (typeof ragService?.prepare !== 'function' || typeof ragService?.ask !== 'function') {
+        if (!process.env.GEMINI_API_KEY) {
           throw new ReportError('REPORT_AI_UNAVAILABLE', 503, 'The AI narrative service is not configured.');
         }
-        await ragService.prepare(sessionId);
-        const question = 'Summarize this mission\'s stored evidence for an audit report. Distinguish CONFIRMED records, UNCONFIRMED visual observations, and unresolved metal. Describe recorded GPS, model confidence, risk and missing evidence with source IDs. Do not interpret a risk label as confirmation, infer mission totals from a retrieved subset, or claim clearance. State sample/synthetic provenance when present.';
-        const result = await ragService.ask(question, sessionId);
-        if (result?.mission_id !== sessionId || !Array.isArray(result.sources)) {
-          throw new ReportError('REPORT_SOURCE_MISMATCH', 409, 'The AI narrative result does not identify this mission.');
-        }
-        if (typeof result.answer !== 'string' || !result.answer.trim() || !result.sources.length) {
-          throw new ReportError('REPORT_AI_FAILED', 502, 'The AI service did not return a narrative with source citations.');
-        }
-        narrativeSources = result.sources.map((source, index) => ({
-          ...mapRagSource(source, snapshot), citationNumber: index + 1
-        }));
-        // RAG performs its own generation checks; this extra full-record check
-        // also catches source fields that RAG intentionally does not index.
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.5-flash' });
+        const prompt = `Summarize this mission's stored evidence for an audit report. Distinguish CONFIRMED records, UNCONFIRMED visual observations, and unresolved metal. Describe recorded GPS, model confidence, risk and missing evidence with source IDs. Do not interpret a risk label as confirmation, infer mission totals from a retrieved subset, or claim clearance. State sample/synthetic provenance when present.
+        
+Mission Summary:
+${JSON.stringify(summary, null, 2)}`;
+        const result = await model.generateContent(prompt);
+        
+        narrativeSources = [];
+        
+        // Ensure mission records did not change during generation.
         if (hash(await loadSnapshot(db, sessionId)) !== sourceHash) {
           throw new ReportError('REPORT_SNAPSHOT_CHANGED', 409, 'Mission records changed during AI generation. Please generate a new report.');
         }
-        narrative = result.answer.trim();
+        narrative = result.response.text().trim();
       } catch (error) {
         const known = error instanceof ReportError || (typeof error?.code === 'string' && Number.isInteger(error?.status) && error.status >= 400 && error.status <= 599);
         const message = known ? error.message : 'The AI narrative could not be generated. Check the configured RAG service and try again, or explicitly choose a factual report.';
