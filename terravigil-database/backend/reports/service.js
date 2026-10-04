@@ -4,6 +4,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { scoreAndSelectEvidence } = require('./evidence-scorer');
 const { createPdf } = require('./pdf');
 const { createCsv } = require('./csv');
 const { ReportError, canonicalJson, hash, hashBytes, validateSessionId, loadSnapshot, summarize,
@@ -106,9 +107,15 @@ function createReportService({ getDB, dataDir } = {}) {
         }
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
         const model = genAI.getGenerativeModel({ model: process.env.GEMINI_MODEL || 'gemini-2.5-flash' });
-        const prompt = `Summarize this mission's stored evidence for an audit report. Distinguish CONFIRMED records, UNCONFIRMED visual observations, and unresolved metal. Describe recorded GPS, model confidence, risk and missing evidence with source IDs. Do not interpret a risk label as confirmation, infer mission totals from a retrieved subset, or claim clearance. State sample/synthetic provenance when present.
-        
-Mission Summary:
+        const reportQuery = 'Summarize this mission\'s stored evidence for an audit report. Distinguish CONFIRMED records, UNCONFIRMED visual observations, and unresolved metal. Describe recorded GPS, model confidence, risk and missing evidence. Do not interpret a risk label as confirmation or claim clearance. State sample/synthetic provenance when present.';
+        // Use MiniLM to score and select the most relevant evidence before sending to Gemini.
+        const evidenceBlock = await scoreAndSelectEvidence(reportQuery, snapshot);
+        const prompt = `${reportQuery}
+
+Selected Mission Evidence (scored by semantic relevance):
+${evidenceBlock}
+
+Mission Summary Statistics:
 ${JSON.stringify(summary, null, 2)}`;
         const result = await model.generateContent(prompt);
         
